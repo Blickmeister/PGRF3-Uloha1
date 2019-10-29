@@ -1,12 +1,9 @@
 #version 150
 in vec2 inPosition; // input from the vertex buffer
-out vec3 color;
-out vec3 normal_IO;
-out vec3 lightDir;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 proj;
-out vec2 posIO;
+out vec4 pos;
 //uniform mat4 matMV;
 
 float getFValue(vec2 xy){
@@ -24,19 +21,11 @@ vec3 getNormal(vec2 xy){
 
 
 void main() {
-	vec3 light = vec3(10);
-	vec2 position = inPosition;
+	vec2 position = inPosition-0.5;
 
-	posIO = inPosition;
-
-	position.xy -= 0.5;
 	float z = getFValue(position.xy);
 	vec4 objectPos = vec4(position.x, z, position.y, 1.0);
 
-	lightDir = light - (model*objectPos).xyz;
-	vec3 normal = normalize(getNormal(position.xy));
-	normal =  inverse(transpose(mat3(model*view)))*normal;
-	normal_IO = normal;
-	color = vec3(normal);
 	gl_Position = proj*view*model*objectPos;
+	pos = proj*view*model*objectPos;
 } 

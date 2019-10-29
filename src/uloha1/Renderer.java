@@ -5,19 +5,16 @@ import lvl2advanced.p01gui.p01simple.AbstractRenderer;
 import lwjglutils.*;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.glfw.*;
-import org.lwjgl.opengl.GL;
-import org.lwjgl.system.MemoryStack;
 import transforms.*;
+import static org.lwjgl.opengl.GL30.GL_FRAMEBUFFER;
+import static org.lwjgl.opengl.GL30.glBindFramebuffer;
 
 import java.io.IOException;
 import java.nio.DoubleBuffer;
-import java.nio.IntBuffer;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
 import static org.lwjgl.opengl.GL20.*;
-import static org.lwjgl.system.MemoryStack.stackPush;
-import static org.lwjgl.system.MemoryUtil.NULL;
 
 
 /**
@@ -35,7 +32,9 @@ public class Renderer extends AbstractRenderer{
 	OGLTexture2D texture;
 	OGLTexture.Viewer textureViewer;
 
-	int shaderProgram, locMat, locHeight;
+	int shaderProgramLight, shaderProgramView, locMat, locHeight;
+
+	OGLRenderTarget renderTarget;
 
 	int width, height;
 
@@ -43,7 +42,8 @@ public class Renderer extends AbstractRenderer{
 	private long window;
 
 
-	int  locMathModel, locMathView, locMathProj;
+	int  locMathModelView, locMathViewView, locMathProjView;
+	int  locMathModelLight, locMathViewLight, locMathProjLight;
 
 	float time = 0;
 
@@ -227,12 +227,16 @@ public class Renderer extends AbstractRenderer{
 
 		createBuffers();
 
-		shaderProgram = ShaderUtils.loadProgram("/uloha1/start.vert",
-				"/uloha1/start.frag",
+		shaderProgramLight = ShaderUtils.loadProgram("/uloha1/light.vert",
+				"/uloha1/light.frag",
+				null,null,null,null);
+
+		shaderProgramView = ShaderUtils.loadProgram("/uloha1/view.vert",
+				"/uloha1/view.frag",
 				null,null,null,null);
 
 		// Shader program set
-		glUseProgram(this.shaderProgram);
+		glUseProgram(this.shaderProgramLight);
 
 		try {
 			texture = new OGLTexture2D("textures/globe.jpg");
@@ -245,43 +249,75 @@ public class Renderer extends AbstractRenderer{
 		// internal OpenGL ID of a shader uniform (constant during one draw call
 		// - constant value for all processed vertices or pixels) variable
 		//locTime = glGetUniformLocation(shaderProgram, "time");
-		locMathModel = glGetUniformLocation(shaderProgram, "model");
-		locMathView = glGetUniformLocation(shaderProgram, "view");
-		locMathProj = glGetUniformLocation(shaderProgram, "proj");
+		locMathModelLight = glGetUniformLocation(shaderProgramLight, "model");
+		locMathViewLight = glGetUniformLocation(shaderProgramLight, "view");
+		locMathProjLight = glGetUniformLocation(shaderProgramLight, "proj");
+
+		locMathModelView = glGetUniformLocation(shaderProgramView, "model");
+		locMathViewView = glGetUniformLocation(shaderProgramView, "view");
+		locMathProjView = glGetUniformLocation(shaderProgramView, "proj");
 		cam = cam.withPosition(new Vec3D(5, 5, 2.5))
 				.withAzimuth(Math.PI * 1.25)
 				.withZenith(Math.PI * -0.125);
+
+		renderTarget = new OGLRenderTarget(512, 512);
 	}
 
 	@Override
 	public void display() {
-		glViewport(0, 0, width, height);
+		renderTarget.bind();
+
+		glClearColor(0.5f,0.5f,0.1f,1f);
 		glEnable(GL_DEPTH_TEST);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
+		glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+
+		glUseProgram(shaderProgramLight);
+		time += 0.01;
+
+		glUniformMatrix4fv(locMathModelLight, false, new Mat4RotX(time).floatArray());
+		glUniformMatrix4fv(locMathViewLight, false, cam.getViewMatrix().floatArray());
+		glUniformMatrix4fv(locMathProjLight, false, proj.floatArray());
+
+
+		// bind and draw
+		buffers.draw(GL_TRIANGLES, shaderProgramLight);
+		glUniformMatrix4fv(locMathModelLight,false,new Mat4RotX(time).mul(new Mat4Transl(1,1,0)).floatArray());
+		buffers.draw(GL_TRIANGLES, shaderProgramLight);
+		//textureViewer.view(renderTarget.getColorTexture());
+
+		//-----------------------------------------------
+		//glEnable(GL_DEPTH_TEST);
+		glUseProgram(shaderProgramView);
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glViewport(0, 0, width, height);
+		glClearColor(0.5f,0.1f,0.1f,1f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
 		// set the current shader to be used, could have been done only once (in
 		// init) in this sample (only one shader used)
-		glUseProgram(shaderProgram);
+
 		// to use the default shader of the "fixed pipeline", call
 		// glUseProgram(0);
 		time += 0.01;
-		glUniformMatrix4fv(locMathModel, false, new Mat4RotX(time).floatArray());
-
-		glUniformMatrix4fv(locMathView, false, cam.getViewMatrix().floatArray());
-
-		glUniformMatrix4fv(locMathProj, false, proj.floatArray());
+		glUniformMatrix4fv(locMathModelView, false, new Mat4RotX(time).floatArray());
+		glUniformMatrix4fv(locMathViewView, false, cam.getViewMatrix().floatArray());
+		glUniformMatrix4fv(locMathProjView, false, proj.floatArray());
 		//glUniform1f(locTime, time); // correct shader must be set before this
-
+		texture.bind(shaderProgramView,"textureID",0);
 		// bind and draw
 		//buffers.draw(GL_TRIANGLES, shaderProgram);
 
-		texture.bind(shaderProgram, "textureID",0);
-
 		glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
 		// bind and draw
-		buffers.draw(GL_TRIANGLES, shaderProgram);
+		buffers.draw(GL_TRIANGLES, shaderProgramView);
 
-		textureViewer.view(texture);
+		glDisable(GL_DEPTH_TEST);
+		//textureViewer.view(texture, -1, -1, 0.5);
+		textureViewer.view(renderTarget.getColorTexture(), -1, -1, 0.5);
+		textureViewer.view(renderTarget.getDepthTexture(), -1, 0, 0.5);
 
 
 	}

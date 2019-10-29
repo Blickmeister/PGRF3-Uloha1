@@ -113,7 +113,7 @@ public class App {
 
         createBuffers();
 
-        shaderProgram = ShaderUtils.loadProgram("/uloha1/start.vert",
+        shaderProgram = ShaderUtils.loadProgram("/uloha1/light.vert",
                 "/lvl1basic/p01start/start.frag",
                 null,null,null,null);
 
