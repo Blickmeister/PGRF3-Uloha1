@@ -2,8 +2,8 @@
 out vec4 outColor; // output from the fragment shader
 uniform sampler2D textureID;
 uniform sampler2D textureDepth;
-uniform mat4 matMVPlight;
-uniform int mode;
+uniform mat4 matMVPLight;
+uniform int objectType;
 in vec2 posIO;
 in vec4 objPos;
 in vec3 normal;
@@ -29,7 +29,7 @@ void main() {
     vec4 finalColor = ambient +diffuse +specular;
 
     // transformace z pohledu zdroje světla
-    vec4 shadowCoord = matMVPlight* vec4(objPos.xyz, 1.0);
+    vec4 shadowCoord = matMVPLight* vec4(objPos.xyz, 1.0);
     // přepočet do souřadnic textury + bias
     vec3 texCoord = shadowCoord.xyz/shadowCoord.w*0.5+0.5;
     // odstranění akné
@@ -37,7 +37,7 @@ void main() {
     texCoord.z = texCoord.z - bias;
 
     // barva světelného zdroje
-    if(mode==2) {
+    if(objectType==2) {
         outColor = vec4(1.0);
     }
     // porovnání s hloubkovou mapou

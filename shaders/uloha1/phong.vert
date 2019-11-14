@@ -3,7 +3,7 @@ in vec2 inPosition; // input from the vertex buffer
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 proj;
-uniform int mode;
+uniform int objectType;
 uniform vec3 lightPos;
 out vec2 posIO;
 out vec4 objPos;
@@ -17,7 +17,7 @@ out vec3 viewDir;
 
 // získání z hodnoty
 float getFValue(vec2 xy){
-    if (mode==0)
+    if (objectType==0)
     return 0;
     return -(xy.x*xy.x*5+xy.y*xy.y*5);
 }
@@ -50,7 +50,7 @@ void main() {
     vec2 position = inPosition -  0.5;
 
     // rozdělení objektů dle vytvoření - výpočet z/xyz
-    if(mode < 2) {
+    if(objectType < 2) {
         float z = getFValue(position.xy);
         objPos = model*vec4(position.x, position.y, z, 1.0);
     } else {

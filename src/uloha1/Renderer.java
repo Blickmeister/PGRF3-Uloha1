@@ -10,6 +10,7 @@ import transforms.*;
 
 import java.io.IOException;
 import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
 
 import static org.lwjgl.glfw.GLFW.*;
 import static org.lwjgl.opengl.GL11.*;
@@ -37,18 +38,25 @@ public class Renderer extends AbstractRenderer{
 
 	int width, height;
 
+	// uniform lokátory
 	int  locTime, locMathModelView, locMathViewView, locMathProjView;
 	int  locMathModelLight, locMathViewLight, locMathProjLight, locLightPos,
-			locMathMVPLight, locMode;
+			locMathMVPLight, locObjectType, locLightModelType, locObjectTypeForLight;
 
-	int objectType = 0;
-	int switchShaderProgram = 0;
+	// proměnné pro přepínání módů
+	int switchLightModel = 0;
 
+	// proměnné pro shadery
 	float time, rot1, rot2 = 0;
+	Mat4 matMVPLight = new Mat4Identity();
+	Vec3D light = new Vec3D();
 
+
+	// vytvoření kamery a definice projekce
 	Camera cam = new Camera();
 	Mat4 proj = new Mat4PerspRH(Math.PI / 4, 1, 0.01, 100.0);
 
+	// ovládání tlačítky
 	private GLFWKeyCallback   keyCallback = new GLFWKeyCallback() {
 		@Override
 		public void invoke(long window, int key, int scancode, int action, int mods) {
@@ -81,10 +89,10 @@ public class Renderer extends AbstractRenderer{
 						cam = cam.mulRadius(0.9f);
 						break;
 					case GLFW_KEY_F:
-						if(switchShaderProgram == 1) {
-							switchShaderProgram = 0;
+						if(switchLightModel == 1) {
+							switchLightModel = 0;
 						} else {
-							switchShaderProgram++;
+							switchLightModel++;
 						}
 						break;
 				}
@@ -92,6 +100,7 @@ public class Renderer extends AbstractRenderer{
 		}
 	};
 
+	// resize okna
 	private GLFWWindowSizeCallback wsCallback = new GLFWWindowSizeCallback() {
 		@Override
 		public void invoke(long window, int w, int h) {
@@ -106,6 +115,7 @@ public class Renderer extends AbstractRenderer{
 		}
 	};
 
+	// ovládání myší
 	private GLFWMouseButtonCallback mbCallback = new GLFWMouseButtonCallback () {
 		@Override
 		public void invoke(long window, int button, int action, int mods) {
@@ -185,29 +195,23 @@ public class Renderer extends AbstractRenderer{
 	}
 
 
+	// vytvoření gridu - VB a IB
 	void createBuffers(int m) {
 
 		BufferGenerator buf = new BufferGenerator();
 
-		buf.createVertexBuffer(m, m);
-		buf.createIndexBuffer(m , m);
+		buf.createVertexBuffer(m,m);
+		//buf.createIndexBuffer(m , m);
+		buf.createIndexBufferTriangleStrips(m,m);
 
 		float[] vertexBufferData = buf.getVertexBufferData();
 		int[] indexBufferData = buf.getIndexBufferData();
-
-        /*for(int j = 0; j < vertexBufferData.length; j+=8) {
-            for (int i = j; i < m * 2 + j; i++) {
-                System.out.print(vertexBufferData[i] + "  ");
-            }
-            System.out.println();
-            System.out.println();
-        }*/
 
 		for(int i = 0; i < indexBufferData.length; i++){
 			System.out.print(indexBufferData[i] + "  ");
 		}
 
-		// vertex binding description, concise version
+		// nabindování a vlastnosti VB
 		OGLBuffers.Attrib[] attributes = {
 				new OGLBuffers.Attrib("inPosition", 2), // 2 floats
 				//new OGLBuffers.Attrib("inColor", 3) // 3 floats
@@ -216,6 +220,7 @@ public class Renderer extends AbstractRenderer{
 				indexBufferData);
 	}
 
+	// inicializace scény
 	@Override
 	public void init() {
 		OGLUtils.printOGLparameters();
@@ -227,122 +232,64 @@ public class Renderer extends AbstractRenderer{
 
 		createBuffers(50);
 
+		// init shaderů
 		shaderProgramLight = ShaderUtils.loadProgram("/uloha1/light");
 
-		shaderProgramView = ShaderUtils.loadProgram("/uloha1/view.vert",
-				"/uloha1/view.frag",
-				null,null,null,null);
+		shaderProgramView = ShaderUtils.loadProgram("/uloha1/view");
 
-		shaderProgramPhong = ShaderUtils.loadProgram("/uloha1/phong");
+		//shaderProgramPhong = ShaderUtils.loadProgram("/uloha1/phong");
 
-		// Shader program set
+		// nastavení aktuálního shaderu
 		glUseProgram(this.shaderProgramLight);
 
+		// načtení textury
 		try {
-			texture = new OGLTexture2D("textures/globe.jpg");
+			texture = new OGLTexture2D("textures/globeNormal.png");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 
-		textureViewer = new OGLTexture2D.Viewer();
-
-		// internal OpenGL ID of a shader uniform (constant during one draw call
-		// - constant value for all processed vertices or pixels) variable
-		//locTime = glGetUniformLocation(shaderProgram, "time");
+		// init lokátorů
 		locMathModelLight = glGetUniformLocation(shaderProgramLight, "model");
 		locMathViewLight = glGetUniformLocation(shaderProgramLight, "view");
 		locMathProjLight = glGetUniformLocation(shaderProgramLight, "proj");
+		locObjectTypeForLight = glGetUniformLocation(shaderProgramLight, "objectType");
 
 		locMathModelView = glGetUniformLocation(shaderProgramView, "model");
 		locMathViewView = glGetUniformLocation(shaderProgramView, "view");
 		locMathProjView = glGetUniformLocation(shaderProgramView, "proj");
-
 		locLightPos = glGetUniformLocation(shaderProgramView, "lightPos");
+		locMathMVPLight = glGetUniformLocation(shaderProgramView,"matMVPLight");
+		locLightModelType = glGetUniformLocation(shaderProgramView, "lightModelType");
+		locObjectType = glGetUniformLocation(shaderProgramView, "objectType");
+		locTime = glGetUniformLocation(shaderProgramView, "time");
 
 		textRenderer = new OGLTextRenderer(width, height);
-		//textureView = new OGLTexture2D.Viewer();
 
+		// definice kamery
 		cam = cam.withPosition(new Vec3D(5, 5, 2.5))
 				.withAzimuth(Math.PI * 1.25)
 				.withZenith(Math.PI * -0.125);
 
+		textureViewer = new OGLTexture2D.Viewer();
 		renderTarget = new OGLRenderTarget(1024, 1024);
 	}
 
-	@Override
-	public void display() {
-		String text = new String(this.getClass().getName() + ": [LMB] camera, WSAD");
-		glEnable(GL_DEPTH_TEST);
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		glLineWidth(5);
-		if (!mouseButton1)
-			rot1 += 0.01;
-		if (!mouseButton2)
-			rot2 += 0.01;
-
-		//----------------------------------------------------From Light
-
-		renderTarget.bind();
-		glClearColor(0.1f, 0.5f, 0.1f, 1f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
-
-		glUseProgram(shaderProgramLight);
-		Vec3D light = new Vec3D(0, 3, 10).mul(new Mat3RotX(rot2 *2));
-
-		glUniformMatrix4fv (locMathModelLight, false,
-				new Mat4RotX(rot1).mul(new Mat4Transl(0,0,1)).floatArray());
-		glUniformMatrix4fv (locMathViewLight, false,
-				new Mat4ViewRH(light, light.mul(-1), new Vec3D(0,1,0)).floatArray());
-		glUniformMatrix4fv (locMathProjLight, false,
-				new Mat4OrthoRH(10,10,1,20).floatArray());
-
-
-		Mat4 matMVPlight =  new Mat4ViewRH(light, light.mul(-1), new Vec3D(0,1,0))
-				.mul(new Mat4OrthoRH(10,10,1,20));
-
-		// bind and draw
-		buffers.draw(GL_TRIANGLES, shaderProgramLight);
-
-
-		//----------------------------------------------------From View
-
+	// metoda pro renderování z pohledu kamery do obrazovky
+	public void renderFromView() {
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glViewport(0, 0, width, height);
 		glClearColor(0.5f, 0.1f, 0.1f, 1f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
-		//glUseProgram(shaderProgramView);
+		glUseProgram(shaderProgramView);
 
-		switch(switchShaderProgram) {
-			case 0:
-				glUseProgram(shaderProgramView);
-				locMathModelView = glGetUniformLocation(shaderProgramView, "model");
-				locMathViewView = glGetUniformLocation(shaderProgramView, "view");
-				locMathProjView = glGetUniformLocation(shaderProgramView, "proj");
-				locMathMVPLight = glGetUniformLocation(shaderProgramView,"matMVPlight");
-				locMode = glGetUniformLocation(shaderProgramView,"mode");
-				locLightPos = glGetUniformLocation(shaderProgramView, "lightPos");
-				locTime = glGetUniformLocation(shaderProgramView, "time");
-
-				break;
-			case 1:
-				glUseProgram(shaderProgramPhong);
-				locMathModelView = glGetUniformLocation(shaderProgramPhong, "model");
-				locMathViewView = glGetUniformLocation(shaderProgramPhong, "view");
-				locMathProjView = glGetUniformLocation(shaderProgramPhong, "proj");
-				locMathMVPLight = glGetUniformLocation(shaderProgramPhong,"matMVPlight");
-				locMode = glGetUniformLocation(shaderProgramPhong,"mode");
-				locLightPos = glGetUniformLocation(shaderProgramPhong, "lightPos");
-				locTime = glGetUniformLocation(shaderProgramPhong, "time");
-				break;
-		}
-
+		glUniform1i(locLightModelType, switchLightModel);
 		glUniform1f(locTime, time);
-
-		//int locmatMVPlight = glGetUniformLocation(shaderProgramView,"matMVPlight");
+		glUniform3fv(locLightPos, new float[]{(float)light.getX(), (float)light.getY(), (float)light.getZ()});
 
 		glUniformMatrix4fv (locMathMVPLight, false,
-				matMVPlight.floatArray());
+				matMVPLight.floatArray());
 		glUniformMatrix4fv (locMathViewView, false,
 				cam.getViewMatrix().floatArray());
 		glUniformMatrix4fv (locMathProjView, false,
@@ -354,23 +301,17 @@ public class Renderer extends AbstractRenderer{
 		// bind and draw
 		//int locMode = glGetUniformLocation(shaderProgramView,"mode");
 
-		glUniform1i(locMode, 0); //plane
+		glUniform1i(locObjectType, 0); //plane
 		glUniformMatrix4fv (locMathModelView, false,
-				new Mat4Scale(5).floatArray());
-		if(switchShaderProgram == 0) {
-			buffers.draw(GL_TRIANGLES, shaderProgramView);
-		} else if(switchShaderProgram == 1) {
-			buffers.draw(GL_TRIANGLES, shaderProgramPhong);
-		}
+				new Mat4Scale(15).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramView);
 
-		glUniform1i(locMode, 1); //object
+
+		glUniform1i(locObjectType, 1); //object
 		glUniformMatrix4fv (locMathModelView, false,
-				new Mat4RotX(rot1).mul(new Mat4Transl(0,0,3)).floatArray());
-		if(switchShaderProgram == 0) {
-			buffers.draw(GL_TRIANGLES, shaderProgramView);
-		} else if(switchShaderProgram == 1) {
-			buffers.draw(GL_TRIANGLES, shaderProgramPhong);
-		}
+				new Mat4RotX(rot1).mul(new Mat4Transl(0,0,2)).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramView);
+
 
 		/*glUniform1i(locMode, 2); //vlnka
 		if(switchShaderProgram == 0) {
@@ -378,24 +319,124 @@ public class Renderer extends AbstractRenderer{
 		} else if(switchShaderProgram == 1) {
 			buffers.draw(GL_TRIANGLES, shaderProgramPhong);
 		}*/
-
-		glUniform1i(locMode, 2); //light position
+		glUniform1i(locObjectType, 2); //light position
 		glUniformMatrix4fv (locMathModelView, false,
 				new Mat4Transl(light).mul(new Mat4Scale(0.5)).floatArray());
-		if(switchShaderProgram == 0) {
-			buffers.draw(GL_TRIANGLES, shaderProgramView);
-		} else if(switchShaderProgram == 1) {
-			buffers.draw(GL_TRIANGLES, shaderProgramPhong);
-		}
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramView);
+
+		glUniform1i(locObjectType, 3); // cone
+		glUniformMatrix4fv (locMathModelView, false,
+				new Mat4RotX(rot1).mul(new Mat4Transl(3,0,3)).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramView);
+
+		glUniform1i(locObjectType, 4); // elephant head
+		glUniformMatrix4fv (locMathModelView, false,
+				new Mat4RotX(rot1).mul(new Mat4Transl(12,0,5)).mul(new Mat4Scale(0.20)).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramView);
+
+		glUniform1i(locObjectType, 5); // my battle station
+		glUniformMatrix4fv (locMathModelView, false,
+				new Mat4RotX(rot1).mul(new Mat4Transl(5,15,4)).mul(new Mat4Scale(0.20)).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramView);
+
+		glUniform1i(locObjectType, 6); // sombrero
+		glUniformMatrix4fv (locMathModelView, false,
+				new Mat4RotX(rot1).mul(new Mat4Transl(25,-15,12)).mul(new Mat4Scale(0.15)).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramView);
+
+		glUniform1i(locObjectType, 7); // spiral
+		glUniformMatrix4fv (locMathModelView, false,
+				new Mat4RotX(rot1).mul(new Mat4Transl(-5,-3,6)).mul(new Mat4Scale(0.15)).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramView);
+
 
 
 		textureViewer.view(renderTarget.getColorTexture(),-1,-1,0.5);
 		textureViewer.view(renderTarget.getDepthTexture(),-1,0,0.5);
 
+		String text = new String(this.getClass().getName() + ": [LMB] camera, WSAD");
 		textRenderer.clear();
 		textRenderer.addStr2D(3, 20, text);
 		textRenderer.addStr2D(width-90, height-3, " (c) PGRF UHK");
 		textRenderer.draw();
+	}
 
+	// metoda pro renderování z pohledu světla do render targetu
+	public void renderFromLight() {
+		renderTarget.bind();
+		glClearColor(0.1f, 0.5f, 0.1f, 1f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
+
+		glUseProgram(shaderProgramLight);
+		light = new Vec3D(0, 0, 18).mul(new Mat3RotX(rot2 *2));
+
+		glUniformMatrix4fv (locMathModelLight, false,
+				new Mat4RotX(rot1).mul(new Mat4Transl(0,0,1)).floatArray());
+		glUniformMatrix4fv (locMathViewLight, false,
+				new Mat4ViewRH(light, light.mul(-1), new Vec3D(0,1,0)).floatArray());
+		glUniformMatrix4fv (locMathProjLight, false,
+				new Mat4OrthoRH(10,10,1,20).floatArray());
+
+
+		matMVPLight =  new Mat4ViewRH(light, light.mul(-1), new Vec3D(0,1,0))
+				.mul(new Mat4OrthoRH(10,10,1,20));
+
+		// bind and draw
+		//buffers.draw(GL_TRIANGLES, shaderProgramLight);
+
+		glUniform1i(locObjectTypeForLight, 0); //plane
+		glUniformMatrix4fv (locMathModelLight, false,
+				new Mat4Scale(15).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramLight);
+
+		glUniform1i(locObjectTypeForLight, 1); //object
+		glUniformMatrix4fv (locMathModelLight, false,
+				new Mat4RotX(rot1).mul(new Mat4Transl(0,0,2)).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramLight);
+
+		glUniform1i(locObjectTypeForLight, 2); // cone
+		glUniformMatrix4fv (locMathModelLight, false,
+				new Mat4RotX(rot1).mul(new Mat4Transl(3,0,3)).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramLight);
+
+		glUniform1i(locObjectTypeForLight, 3); // elephant head
+		glUniformMatrix4fv (locMathModelLight, false,
+				new Mat4RotX(rot1).mul(new Mat4Transl(12,0,5)).mul(new Mat4Scale(0.20)).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramLight);
+
+		glUniform1i(locObjectTypeForLight, 4); // my battle station
+		glUniformMatrix4fv (locMathModelLight, false,
+				new Mat4RotX(rot1).mul(new Mat4Transl(5,15,4)).mul(new Mat4Scale(0.20)).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramLight);
+
+		glUniform1i(locObjectTypeForLight, 5); // sombrero
+		glUniformMatrix4fv (locMathModelLight, false,
+				new Mat4RotX(rot1).mul(new Mat4Transl(25,-15,12)).mul(new Mat4Scale(0.15)).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramLight);
+
+		glUniform1i(locObjectTypeForLight, 6); // spiral
+		glUniformMatrix4fv (locMathModelLight, false,
+				new Mat4RotX(rot1).mul(new Mat4Transl(-5,-3,6)).mul(new Mat4Scale(0.15)).floatArray());
+		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramLight);
+	}
+
+	// vykreslení scény
+	@Override
+	public void display() {
+		glEnable(GL_DEPTH_TEST); // zapnutí z-testu
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // přepínání mezi drátovým modelem a vyplněnými plochami TODO
+		glLineWidth(5); // šířka čar
+		time += 0.01;
+		// zastavení pohybu světla a modelu
+		if (!mouseButton1)
+			rot1 += 0.01;
+		if (!mouseButton2)
+			rot2 += 0.01;
+
+		//renderování z pohledu světla do render targetu
+		renderFromLight();
+		//glFrontFace(GL_CW);
+		//renderování z pohledu kamery do obrazovky
+		renderFromView();
 	}
 }
