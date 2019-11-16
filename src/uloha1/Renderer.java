@@ -20,12 +20,13 @@ import static org.lwjgl.opengl.GL30.*;
 
 /**
  *
- * @author PGRF FIM UHK
- * @version 2.0
- * @since 2019-09-02
+ * @author Bc. Ondřej Schneider
+ * @version 1.0
+ * @since 2019-11-16
  */
 public class Renderer extends AbstractRenderer{
 
+	// proměnné pro ovládání myší
 	double ox, oy;
 	boolean mouseButton1, mouseButton2 = false;
 
@@ -39,12 +40,14 @@ public class Renderer extends AbstractRenderer{
 	int width, height;
 
 	// uniform lokátory
-	int  locTime, locMathModelView, locMathViewView, locMathProjView;
+	int  locTime, locTimeForLight, locMathModelView, locMathViewView, locMathProjView;
 	int  locMathModelLight, locMathViewLight, locMathProjLight, locLightPos,
-			locMathMVPLight, locObjectType, locLightModelType, locObjectTypeForLight;
+			locMathMVPLight, locObjectType, locLightModelType, locObjectTypeForLight, locOutcolorType;
 
 	// proměnné pro přepínání módů
 	int switchLightModel = 0;
+	int switchOutcolor = 0;
+	boolean reset = false;
 
 	// proměnné pro shadery
 	float time, rot1, rot2 = 0;
@@ -94,6 +97,16 @@ public class Renderer extends AbstractRenderer{
 						} else {
 							switchLightModel++;
 						}
+						break;
+					case GLFW_KEY_G:
+						if(switchOutcolor == 6) {
+							switchOutcolor = 0;
+						} else {
+							switchOutcolor++;
+						}
+						break;
+					case GLFW_KEY_BACKSPACE: // TODO zkusit jen esi nejde
+						reset = true;
 						break;
 				}
 			}
@@ -254,6 +267,7 @@ public class Renderer extends AbstractRenderer{
 		locMathViewLight = glGetUniformLocation(shaderProgramLight, "view");
 		locMathProjLight = glGetUniformLocation(shaderProgramLight, "proj");
 		locObjectTypeForLight = glGetUniformLocation(shaderProgramLight, "objectType");
+		locTimeForLight = glGetUniformLocation(shaderProgramLight, "time");
 
 		locMathModelView = glGetUniformLocation(shaderProgramView, "model");
 		locMathViewView = glGetUniformLocation(shaderProgramView, "view");
@@ -261,6 +275,7 @@ public class Renderer extends AbstractRenderer{
 		locLightPos = glGetUniformLocation(shaderProgramView, "lightPos");
 		locMathMVPLight = glGetUniformLocation(shaderProgramView,"matMVPLight");
 		locLightModelType = glGetUniformLocation(shaderProgramView, "lightModelType");
+		locOutcolorType = glGetUniformLocation(shaderProgramView, "outcolorType");
 		locObjectType = glGetUniformLocation(shaderProgramView, "objectType");
 		locTime = glGetUniformLocation(shaderProgramView, "time");
 
@@ -285,6 +300,7 @@ public class Renderer extends AbstractRenderer{
 		glUseProgram(shaderProgramView);
 
 		glUniform1i(locLightModelType, switchLightModel);
+		glUniform1i(locOutcolorType, switchOutcolor);
 		glUniform1f(locTime, time);
 		glUniform3fv(locLightPos, new float[]{(float)light.getX(), (float)light.getY(), (float)light.getZ()});
 
@@ -303,7 +319,7 @@ public class Renderer extends AbstractRenderer{
 
 		glUniform1i(locObjectType, 0); //plane
 		glUniformMatrix4fv (locMathModelView, false,
-				new Mat4Scale(15).floatArray());
+				new Mat4Scale(8).floatArray());
 		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramView);
 
 
@@ -368,7 +384,7 @@ public class Renderer extends AbstractRenderer{
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // clear the framebuffer
 
 		glUseProgram(shaderProgramLight);
-		light = new Vec3D(0, 0, 18).mul(new Mat3RotX(rot2 *2));
+		light = new Vec3D(0, 0, 10).mul(new Mat3RotX(rot2 *2));
 
 		glUniformMatrix4fv (locMathModelLight, false,
 				new Mat4RotX(rot1).mul(new Mat4Transl(0,0,1)).floatArray());
@@ -377,6 +393,7 @@ public class Renderer extends AbstractRenderer{
 		glUniformMatrix4fv (locMathProjLight, false,
 				new Mat4OrthoRH(10,10,1,20).floatArray());
 
+		glUniform1f(locTimeForLight, time);
 
 		matMVPLight =  new Mat4ViewRH(light, light.mul(-1), new Vec3D(0,1,0))
 				.mul(new Mat4OrthoRH(10,10,1,20));
@@ -416,7 +433,7 @@ public class Renderer extends AbstractRenderer{
 
 		glUniform1i(locObjectTypeForLight, 6); // spiral
 		glUniformMatrix4fv (locMathModelLight, false,
-				new Mat4RotX(rot1).mul(new Mat4Transl(-5,-3,6)).mul(new Mat4Scale(0.15)).floatArray());
+				new Mat4RotX(rot1).mul(new Mat4Transl(-8,-3,6)).mul(new Mat4Scale(0.15)).floatArray());
 		buffers.draw(GL_TRIANGLE_STRIP, shaderProgramLight);
 	}
 
@@ -424,7 +441,7 @@ public class Renderer extends AbstractRenderer{
 	@Override
 	public void display() {
 		glEnable(GL_DEPTH_TEST); // zapnutí z-testu
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // přepínání mezi drátovým modelem a vyplněnými plochami TODO
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // TODO přepínání mezi drátovým modelem a vyplněnými plochami
 		glLineWidth(5); // šířka čar
 		time += 0.01;
 		// zastavení pohybu světla a modelu
@@ -438,5 +455,6 @@ public class Renderer extends AbstractRenderer{
 		//glFrontFace(GL_CW);
 		//renderování z pohledu kamery do obrazovky
 		renderFromView();
+
 	}
 }

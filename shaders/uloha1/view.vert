@@ -6,8 +6,8 @@ uniform mat4 proj; // projekční matice
 uniform vec3 lightPos; // pozice světla
 uniform float time; // pro pohyb tělesa
 uniform int objectType; // typ objektu
-uniform int lightModelType;
-out vec2 posIO;
+uniform int lightModelType; // typ světelného modelu
+out vec2 posIO; // pozice do textury pro FS
 out vec4 objPos; // výsledná pozice pro FS
 out vec3 normalIO; // normála pro FS
 out vec3 lightDir; // směr světla pro FS
@@ -75,9 +75,14 @@ vec3 getSombrero(vec2 vec) {
     return vec3(x, y, z);
 }
 
-// druhý objekt v cylindrických souřadnicích
+// druhý objekt v cylindrických souřadnicích (spirála se "zhušťuje" díky uniform proměnné time)
 vec3 getSpiral(vec2 vec) {
-    float az = vec.y * 2 * 3.14; //s - theta
+    // závora aby se spirála nezhušťovala donekonečna
+    float inc = time;
+    if(inc > 10) {
+        inc = 10;
+    }
+    float az = vec.y * 2 * 3.14 * inc; //s - theta
     float r = vec.y * 2 * 3.14; //t - r
     float v = vec.x * 12; // z
 
@@ -146,8 +151,9 @@ void main() {
         viewDir = -(view* objPos).xyz;
 
 
-    vec3 normal = mat3(view) * normalize(getNormal(position.xy)); // normalizace normály
+    vec3 normal = mat3(view) * getNormal(position.xy); // normalizace normály
     normal =  transpose(inverse(mat3(view*model)))*normal; // transformace normály
+    //vec3 normal = mat3(view)* getNormal(position.xy);
     normalIO = normal; // předání normály do FS
 
     // pohledová a projekční transformace

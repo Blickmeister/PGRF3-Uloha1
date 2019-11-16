@@ -1,10 +1,11 @@
 #version 150
 in vec2 inPosition; // input from the vertex buffer
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 proj;
-uniform int objectType;
-out vec4 pos;
+uniform mat4 model; // modelová matice pro světlo
+uniform mat4 view; // pohledová matice pro světlo
+uniform mat4 proj; // projekční matice pro světlo
+uniform int objectType; // typ objektu pro vykreslení
+uniform float time; // pro pohyb tělesa
+out vec4 pos; // výsledná pozice pro FS
 
 // získání z hodnoty - pro rovinnou podložku a první těleso v kartézských souřadnicích
 float getFValue(vec2 vec){
@@ -70,7 +71,11 @@ vec3 getSombrero(vec2 vec) {
 
 // druhý objekt v cylindrických souřadnicích
 vec3 getSpiral(vec2 vec) {
-	float az = vec.y * 2 * 3.14; //s - theta
+	float inc = time;
+	if(inc > 10) {
+		inc = 10;
+	}
+	float az = vec.y * 2 * 3.14 * inc; //s - theta
 	float r = vec.y * 2 * 3.14; //t - r
 	float v = vec.x * 12; // z
 
@@ -112,7 +117,7 @@ void main() {
 	} else {
 		pos = vec4(getSpiral(position), 1.0);
 	}
-
+	// MVP transformace
 	gl_Position = proj*view*model*pos;
-	//pos = proj*view*model*pos;
+	pos = proj*view*model*pos;
 }
