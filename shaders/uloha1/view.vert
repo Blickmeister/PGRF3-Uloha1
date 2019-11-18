@@ -14,7 +14,7 @@ out vec3 normalIO; // normála pro FS
 out vec3 lightDir; // směr světla pro FS
 out vec3 viewDir; // pohledový vektor pro FS
 out float intensity; // difúzní složka ve vrcholech pro FS
-out vec3 vertColor; // TODO zatim k hovnu nwm co s nim, mozna pryc
+out float dist; // vzdálenost světla od objektu
 
 // získání z hodnoty - pro rovinnou podložku a první těleso v kartézských souřadnicích
 float getFValue(vec2 vec){
@@ -180,6 +180,8 @@ void main() {
         normal = normalize(getNormal(position.xy)); // normalizace a výpočet normály
         normal = inverse(transpose(mat3(view * model))) * normal; // transformace normály
         normalIO = normal;
+        // výpočet vzdálenosti světla od objektu
+        dist = length(lightDir);
 
     } else if(lightModelType == 1) { // per vertex
         normal = normalize(getNormal(position.xy)); // normalizace a výpočet normály
@@ -188,7 +190,6 @@ void main() {
         lightDir = normalize(lightPos - (view * objPos).xyz);
         // výpočet difúzní složky ve vrcholech
         intensity = dot(lightDir, normal);
-        vertColor = vec3(normal.xyz);
 
     } else { // per pixel
         normal = normalize(getNormal(position.xy)); // normalizace a výpočet normály
