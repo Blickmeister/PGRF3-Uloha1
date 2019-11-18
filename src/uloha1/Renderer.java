@@ -43,7 +43,7 @@ public class Renderer extends AbstractRenderer {
     int locTime, locTimeForLight, locMathModelView, locMathViewView, locMathProjView;
     int locMathModelLight, locMathViewLight, locMathProjLight, locLightPos, locViewPos,
             locMathMVPLight, locObjectType, locLightModelType, locObjectTypeForLight,
-            locOutcolorType, locAttenuation, locSpotDir;
+            locOutcolorType, locAttenuation, locSpotDir, locMathTranslateLightPos;
 
     // proměnné pro přepínání módů
     int switchLightModel = 0;
@@ -56,6 +56,13 @@ public class Renderer extends AbstractRenderer {
     float time, rot1, rot2 = 0;
     Mat4 matMVPLight = new Mat4Identity();
     Vec3D light = new Vec3D();
+
+    // proměnné pro TextRenderer
+    String lightModelString = "Blinn-Phong";
+    String colorTypeString = "Texture";
+    String wireframeString = "Fill";
+    String projectionString = "Persp";
+    String attenuationString = "Off";
 
 
     // vytvoření kamery a definice projekce
@@ -91,53 +98,85 @@ public class Renderer extends AbstractRenderer {
                     case GLFW_KEY_SPACE:
                         cam = cam.withFirstPerson(!cam.getFirstPerson());
                         break;
-                    case GLFW_KEY_F:
+                    case GLFW_KEY_L:
                         // Blinn-Phong/PerVertex/PerPixel
-                        if (switchLightModel == 2) {
-                            switchLightModel = 0;
-                        } else {
-                            switchLightModel++;
-                        }
                         if (switchLightModel == 0) {
-                            // kamera pro Blinn-Phong
-                            cam = cam.withPosition(new Vec3D(12, 12, 8))
-                                    .withAzimuth(Math.PI * 1.25)
-                                    .withZenith(Math.PI * -0.125);
+                            lightModelString = "Per vertex";
                             switchLightModel++;
-                        } else if (switchLightModel == 1) {
-                            // kamera pro PerVertex/PerPixel
-                            cam = cam.withPosition(new Vec3D(12, 12, 8))
-                                    .withAzimuth(Math.PI * 1.25)
-                                    .withZenith(Math.PI * -0.125);
+                        } else if(switchLightModel == 1) {
+                            lightModelString = "Per pixel";
                             switchLightModel++;
                         } else {
-                            cam = cam.withPosition(new Vec3D(12, 12, 8))
-                                    .withAzimuth(Math.PI * 1.25)
-                                    .withZenith(Math.PI * -0.125);
                             switchLightModel = 0;
+                            lightModelString = "Blinn-Phong";
                         }
-                        break;
-                    case GLFW_KEY_G:
-                        // textura/xyz/normala/souradniceDoTextury/barvy
-                        if (switchOutcolor == 6) {
-                            switchOutcolor = 0;
+                        if (switchLightModel == 1 || switchLightModel == 2) {
+                            // kamera pro demonstraci perVertex/perPixel
+                            cam = cam.withPosition(new Vec3D(8, 8, 4))
+                                    .withAzimuth(Math.PI * 1.25)
+                                    .withZenith(Math.PI * -0.125);
                         } else {
-                            switchOutcolor++;
+                            // kamera pro Blinn-Phong
+                            cam = cam.withPosition(new Vec3D(12, 12, 10))
+                                    .withAzimuth(Math.PI * 1.25)
+                                    .withZenith(Math.PI * -0.125);
                         }
                         break;
-                    case GLFW_KEY_Q:
+                    case GLFW_KEY_C:
+                        // textura/xyz/z/normala/souradniceDoTextury/barvy
+                        if (switchOutcolor == 0) {
+                            colorTypeString = "XYZ Coords";
+                            switchOutcolor++;
+                        } else if(switchOutcolor == 1) {
+                            colorTypeString = "Z Coord";
+                            switchOutcolor++;
+                        } else if(switchOutcolor == 2){
+                            colorTypeString = "Normal";
+                            switchOutcolor++;
+                        } else if(switchOutcolor == 3){
+                            colorTypeString = "Texture Coords";
+                            switchOutcolor++;
+                        } else if(switchOutcolor == 4){
+                            colorTypeString = "Red Color";
+                            switchOutcolor++;
+                        } else if(switchOutcolor == 5){
+                            colorTypeString = "Green Color";
+                            switchOutcolor++;
+                        } else if(switchOutcolor == 6){
+                            colorTypeString = "Blue Color";
+                            switchOutcolor++;
+                        } else {
+                            switchOutcolor = 0;
+                            colorTypeString = "Texture";
+                        }
+                        break;
+                    case GLFW_KEY_F:
                         // vyplenePlochy/dratovyModel
-                        wireframe = !wireframe;
+                        if(wireframe) {
+                            wireframeString = "Fill";
+                            wireframe = false;
+                        } else {
+                            wireframeString = "Wireframe";
+                            wireframe = true;
+                        }
                         break;
                     // perspektivni/ortogonalni
-                    case GLFW_KEY_E:
-                        persp = !persp;
+                    case GLFW_KEY_P:
+                        if(persp) {
+                            projectionString = "Ortho";
+                            persp = false;
+                        } else {
+                            projectionString = "Persp";
+                            persp = true;
+                        }
                         break;
-                    case GLFW_KEY_R:
+                    case GLFW_KEY_U:
                         if (attenuation == 0) {
                             attenuation = 1;
+                            attenuationString = "On";
                         } else {
                             attenuation = 0;
+                            attenuationString = "Off";
                         }
                         break;
                 }
@@ -311,6 +350,7 @@ public class Renderer extends AbstractRenderer {
         locViewPos = glGetUniformLocation(shaderProgramView, "viewPos");
         locAttenuation = glGetUniformLocation(shaderProgramView, "attenuation");
         locSpotDir = glGetUniformLocation(shaderProgramView, "spotDir");
+        locMathTranslateLightPos = glGetUniformLocation(shaderProgramView, "translateLightPos");
 
         textRenderer = new OGLTextRenderer(width, height);
 
@@ -350,6 +390,7 @@ public class Renderer extends AbstractRenderer {
                 cam.getViewMatrix().floatArray());
         glUniformMatrix4fv(locMathProjView, false,
                 proj.floatArray());
+        glUniformMatrix4fv(locMathTranslateLightPos, false, new Mat4Transl(light).floatArray());
 
         // nabindování textury k zobrazení a pro shadow map
         texture.bind(shaderProgramView, "textureID", 0);
@@ -426,9 +467,21 @@ public class Renderer extends AbstractRenderer {
         }
 
         // TODO dopsat ovládání
-        String text = new String(this.getClass().getName() + ": [LMB] camera, WSAD");
+        String textCamera = new String(this.getClass().getName() + ": [LMB] a WSAD↑↓ -> Camera; SPACE -> First person");
+        String textLight = new String("L -> Light model: " + lightModelString);
+        String textColor = new String("C -> Final color: " + colorTypeString);
+        String textWireframe = new String("F -> Fill/Line: " + wireframeString);
+        String textProj = new String("P -> Projection: " + projectionString);
+        String textAttenuation = new String("U -> Attenuation: " + attenuationString);
         textRenderer.clear();
-        textRenderer.addStr2D(5, 30, text);
+        textRenderer.addStr2D(5, 30, textCamera);
+        textRenderer.addStr2D(5, 60, textLight);
+        if(switchLightModel == 0) {
+            textRenderer.addStr2D(5, 90, textColor);
+        }
+        textRenderer.addStr2D(5, 120, textWireframe);
+        textRenderer.addStr2D(5, 150, textProj);
+        textRenderer.addStr2D(5, 180, textAttenuation);
         textRenderer.addStr2D(width - 90, height - 3, " (c) PGRF UHK");
         textRenderer.draw();
     }

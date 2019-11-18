@@ -15,6 +15,7 @@ out vec3 lightDir; // směr světla pro FS
 out vec3 viewDir; // pohledový vektor pro FS
 out float intensity; // difúzní složka ve vrcholech pro FS
 out float dist; // vzdálenost světla od objektu
+uniform mat4 translateLightPos;
 
 // získání z hodnoty - pro rovinnou podložku a první těleso v kartézských souřadnicích
 float getFValue(vec2 vec){
@@ -173,6 +174,7 @@ void main() {
     // rozdělění výpočtu normály a vektorů světla dle zvoleného modelu osvětlení
     if(lightModelType == 0) { // Blinn-Phong
         // výpočet vektoru směru světla
+        //vec4 lightPosition = tr * vec4(lightPos,1.0);
         lightDir = normalize((mat3(view) * lightPos).xyz - (view * objPos).xyz);
         // výpočet vektoru pohledu (pouze v případě phonga)
         viewDir = normalize((mat3(view) * viewPos).xyz - (view * objPos).xyz);

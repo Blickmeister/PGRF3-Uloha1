@@ -38,8 +38,7 @@ void main() {
 
     // rozdělění výpočtu barevných složek
     if (lightModelType == 1) { // difúzní složka pro osvětlení perVertex
-        //float cosAlpha = max(0, dot(normalize(normalIO), normalize(lightDir)));
-        //finalColor = vec4(vec3(cosAlpha), 1.0);
+
         // skokové obarvení pro ilustraci rozdílu mezi per vertex a per pixel
         if (intensity>0.95) finalColor=vec4(1.0, 0.5, 0.5, 1.0);
         else if (intensity>0.8) finalColor=vec4(0.6, 0.3, 0.3, 1.0);
@@ -51,6 +50,7 @@ void main() {
 
         // výpočet difúzní složky na základě interpolovaných hodnot
         float intensity = dot(normalize(lightDir), normalize(normalIO));
+
         // skokové obarvení pro ilustraci rozdílu mezi per vertex a per pixel
         if (intensity>0.95) finalColor=vec4(1.0, 0.5, 0.5, 1.0);
         else if (intensity>0.8) finalColor=vec4(0.6, 0.3, 0.3, 1.0);
@@ -101,18 +101,21 @@ void main() {
                     // textura
                     outColor = vec4(0.1) * vec4(texture(textureID, posIO).rgb, 1.0);
                 } else if (outcolorType == 1) {
-                    // pozice
+                    // pozice xyz
                     outColor = vec4(0.1) * vec4(objPos.xyz, 1.0);
                 } else if (outcolorType == 2) {
+                    // pozice z
+                    outColor = vec4(0.1) * vec4(objPos.zzz, 1.0);
+                } else if (outcolorType == 3) {
                     // normála
                     outColor = vec4(0.1) * vec4(normalize(normalIO), 1.0);
-                } else if (outcolorType == 3) {
+                } else if (outcolorType == 4) {
                     // pozice do textury
                     outColor = vec4(0.1) * vec4(posIO, 0, 1.0);
-                } else if (outcolorType == 4) {
+                } else if (outcolorType == 5) {
                     // barva červená
                     outColor = vec4(0.1) * vec4(1, 0, 0, 1);
-                } else if (outcolorType == 5) {
+                } else if (outcolorType == 6) {
                     // barva zelená
                     outColor = vec4(0.1) * vec4(0, 1, 0, 1);
                 } else {
@@ -127,18 +130,21 @@ void main() {
                     // textura
                     outColor = vec4(texture(textureID, posIO).rgb, 1.0) * finalColor;
                 } else if (outcolorType == 1) {
-                    // pozice
+                    // pozice xyz
                     outColor = vec4(objPos.xyz, 1.0) * finalColor;
                 } else if (outcolorType == 2) {
+                    // pozice z
+                    outColor = vec4(objPos.zzz, 1.0) * finalColor;
+                } else if (outcolorType == 3) {
                     // normála
                     outColor = vec4(normalize(normalIO), 1.0) * finalColor;
-                } else if (outcolorType == 3) {
+                } else if (outcolorType == 4) {
                     // pozice do textury
                     outColor = vec4(posIO, 0, 1.0) * finalColor;
-                } else if (outcolorType == 4) {
+                } else if (outcolorType == 5) {
                     // barva červená
                     outColor = vec4(1, 0, 0, 1) * finalColor;
-                } else if (outcolorType == 5) {
+                } else if (outcolorType == 6) {
                     // barva zelená
                     outColor = vec4(0, 1, 0, 1) * finalColor;
                 } else {
