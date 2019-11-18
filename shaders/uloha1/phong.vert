@@ -67,3 +67,44 @@ void main() {
 
     gl_Position = proj*view*objPos;
 }
+// ---------------------------------------------- ke kopceni perV/perP
+// výpočet fazolky (sférické souřadnice) pro demonstraci rozdílu mezi per vertex a per pixel
+/*vec3 getBean(vec2 vec) {
+    float az = vec.x * 3.14 *2;
+    float ze = vec.y * 3.14;
+    float r = 1;
+
+    float x = r*cos(az)*cos(ze);
+    float y = 2 * r*sin(az)*cos(ze);
+    float z = 0.5 * r*sin(ze);
+
+    return vec3(x, y, z);
+}
+
+if(objectType == 8) { // 1. fazolka
+    objPos = vec4(getBean(position), 1.0);
+} else if(objectType == 9) { // 2. fazolka
+    objPos = vec4(getBean(position), 1.0);
+} else if(objectType == 10) { // světlo
+    objPos = vec4(getSphere(position), 1.0);
+}
+
+vec4 posMV = view * model * objPos;
+vec3 normal;
+
+if(lightModelType == 1) { // per vertex
+    normal = normalize(getNormal(position.xy)); // normalizace a výpočet normály
+    normal = inverse(transpose(mat3(view * model))) * normal; // transformace normály
+    // výpočet vektoru směru světla
+    lightDir = normalize(lightPos - posMV.xyz);
+    // výpočet difúzní složky ve vrcholech
+    intensity = dot(lightDir, normal);
+    //vertColor = vec3(normal.xyz);
+} else { // per pixel
+    normal = normalize(getNormal(position.xy)); // normalizace a výpočet normály
+    normal = inverse(transpose(mat3(view * model))) * normal; // transformace normály
+    // výpočet vektoru směru světla
+    lightDir = normalize(lightPos - posMV.xyz);
+
+    normalIO = normal; // předání normály do FS
+}*/

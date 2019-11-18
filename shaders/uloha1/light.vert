@@ -4,6 +4,7 @@ uniform mat4 model; // modelová matice pro světlo
 uniform mat4 view; // pohledová matice pro světlo
 uniform mat4 proj; // projekční matice pro světlo
 uniform int objectType; // typ objektu pro vykreslení
+uniform int lightModelType; // typ světelného modelu
 uniform float time; // pro pohyb tělesa
 out vec4 pos; // výsledná pozice pro FS
 
@@ -14,9 +15,6 @@ float getFValue(vec2 vec){
 	} else {
 		return -(vec.x*vec.x*5+vec.y*vec.y*5);
 	}
-	/*} else {
-        return sin(time + vec.y * 3.14 *2);
-    }*/
 }
 
 // druhý objekt v kartézských souřadnicích
@@ -99,23 +97,48 @@ vec3 getSphere(vec2 vec) {
 	return vec3(x, y, z);
 }
 
+// výpočet fazolky (sférické souřadnice) pro demonstraci rozdílu mezi per vertex a per pixel
+vec3 getBean(vec2 vec) {
+	float az = vec.x * 3.14 *2;
+	float ze = vec.y * 3.14;
+	float r = 1;
+
+	float x = r*cos(az)*cos(ze);
+	float y = 2 * r*sin(az)*cos(ze);
+	float z = 0.5 * r*sin(ze);
+
+	return vec3(x, y, z);
+}
+
 void main() {
 	vec2 position = inPosition-0.5;
-	if(objectType < 2) {
-		// výpočet z hodnoty
-		float z = getFValue(position.xy);
-		pos = vec4(position.x, position.y, z, 1.0);
-	} else if(objectType == 2) {
-		// výpočet xyz hodnot
-		pos = vec4(getCone(position), 1.0);
-	} else if(objectType == 3) {
-		pos = vec4(getElephantHead(position), 1.0);
-	} else if(objectType == 4) {
-		pos = vec4(getMyBattleStation(position), 1.0);
-	} else if(objectType == 5){
-		pos = vec4(getSombrero(inPosition), 1.0);
-	} else {
-		pos = vec4(getSpiral(position), 1.0);
+
+	// rozdělení objektů podle zvoleného modelu osvětlení
+	if(lightModelType == 0) { // Blinn-Phong
+
+		// rozdělení objektů dle vytvoření - výpočet z || xyz
+		if (objectType < 2) {
+			// výpočet z hodnoty
+			float z = getFValue(position.xy); // první objekt v kart souřadnicích a rovinná ploška
+			pos = vec4(position.x, position.y, z, 1.0);
+		} else if (objectType == 2) {
+			// výpočet xyz hodnot
+			pos = vec4(getCone(position), 1.0); // přesýpací hodiny
+		} else if (objectType == 3) {
+			pos = vec4(getElephantHead(position), 1.0); // sloní hlava
+		} else if (objectType == 4) {
+			pos = vec4(getMyBattleStation(position), 1.0); // moje bitevní stanice
+		} else if (objectType == 5){
+			pos = vec4(getSombrero(inPosition), 1.0); // sombrero
+		} else if (objectType == 6){
+			pos = vec4(getSpiral(position), 1.0); // spirála
+		}
+	} else { // Per vertex/Per pixel
+		if (objectType == 7) {
+			pos = vec4(getBean(position), 1.0);// 1. fazolka
+		} else if (objectType == 8) {
+			pos = vec4(getBean(position), 1.0);// 2. fazolka
+		}
 	}
 	// MVP transformace
 	gl_Position = proj*view*model*pos;

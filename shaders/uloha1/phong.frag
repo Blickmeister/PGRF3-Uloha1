@@ -50,3 +50,30 @@ void main() {
     }
 }
 
+// ---------------------------- kopceni pro perV/perP
+
+/*vec4 finalColor;
+
+// rozdělění výpočtu barevných složek
+if(lightModelType == 1) { // difúzní složka pro osvětlení perVertex
+    //float cosAlpha = max(0, dot(normalize(normalIO), normalize(lightDir)));
+    //finalColor = vec4(vec3(cosAlpha), 1.0);
+    // skokové obarvení pro ilustraci rozdílu mezi per vertex a per pixel
+    if (intensity>0.95) finalColor=vec4(1.0,0.5,0.5,1.0);
+    else if (intensity>0.8) finalColor=vec4(0.6,0.3,0.3,1.0);
+    else if (intensity>0.5) finalColor=vec4(0.0,0.0,0.3,1.0);
+    else if (intensity>0.25) finalColor=vec4(0.4,0.2,0.2,1.0);
+    else finalColor=vec4(0.2,0.1,0.1,1.0);
+
+} else if(lightModelType == 2) { // difúzní složka pro osvětlení perPixel
+
+// výpočet difúzní složky na základě interpolovaných hodnot
+float intensity = dot(lightDir, normalIO);
+// skokové obarvení pro ilustraci rozdílu mezi per vertex a per pixel
+if (intensity>0.95) finalColor=vec4(1.0,0.5,0.5,1.0);
+else if (intensity>0.8) finalColor=vec4(0.6,0.3,0.3,1.0);
+else if (intensity>0.5) finalColor=vec4(0.0,0.0,0.3,1.0);
+else if (intensity>0.25) finalColor=vec4(0.4,0.2,0.2,1.0);
+else finalColor=vec4(0.2,0.1,0.1,1.0);
+
+outColor = vec4(finalColor);*/
